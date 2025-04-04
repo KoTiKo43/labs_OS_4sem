@@ -143,7 +143,7 @@ int main()
             _getch();
             return 1;
         }
-        cout << "Клиент " << i + 1 << " подключён" << endl;
+        cout << "Клиент " << i + 1 << " подключён" << endl << endl;
 
         // Чтение матрицы
         Matrix matrix;
@@ -153,6 +153,15 @@ int main()
             DisconnectNamedPipe(hInputPipe);
             continue;
         }
+
+        cout << "Получение данных от клиента " << i + 1 << endl;
+        for (const auto& row : matrix.data) {
+            for (auto& val : row) {
+                cout << val << '\t';
+            }
+            cout << endl;
+        }
+        cout << endl;
 
         // Инициализация результирующей матрицы первой из суммы
         if (isFirst)
@@ -218,7 +227,14 @@ int main()
             return 1;
         }
 
-        cout << "Передача данных клиенту " << i + 1 << endl;
+        cout << "Передача данных клиенту " << i + 1 << ": " << endl;
+        for (const auto& row : result.data) {
+            for (auto& val : row) {
+                cout << val << '\t';
+            }
+            cout << endl;
+        }
+        cout << endl;
 
         DisconnectNamedPipe(hOutputPipe);
     }
