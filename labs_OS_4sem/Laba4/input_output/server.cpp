@@ -183,8 +183,24 @@ int main()
     }
     CloseHandle(hInputPipe);
     
-    for (int i = 0; i < num_clients; i++)
+    for (int i = 1; i < num_clients; i++)
     {
+        HANDLE hOutputPipe = CreateNamedPipeA(
+            "\\\\.\\pipe\\MatrixOutput",
+            PIPE_ACCESS_OUTBOUND,
+            PIPE_TYPE_MESSAGE | PIPE_WAIT,
+            PIPE_UNLIMITED_INSTANCES,
+            8192, 8192,
+            0,
+            NULL);
+    
+        if (hOutputPipe == INVALID_HANDLE_VALUE)
+        {
+            cerr << "Ошибка создания канала: " << GetLastError() << endl;
+            _getch();
+            return 1;
+        }
+        
         // Рассылка результата клиентам
         if (!ConnectNamedPipe(hOutputPipe, NULL))
         {
