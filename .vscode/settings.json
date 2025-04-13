@@ -7,6 +7,7 @@
         "limits": "cpp",
         "istream": "cpp",
         "ios": "cpp",
-        "ostream": "cpp"
+        "ostream": "cpp",
+        "iosfwd": "cpp"
     }
 }
