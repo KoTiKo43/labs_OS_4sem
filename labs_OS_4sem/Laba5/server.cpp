@@ -3,6 +3,7 @@
 #include <vector>
 #include <limits>
 #include <ios>
+#include <string>
 using namespace std;
 
 // Вектор сокетов
@@ -15,7 +16,7 @@ void ClientHandler(int index) {
         recv(Connections[index], (char*)&msg_size, sizeof(int), NULL);
         char* msg = new char[msg_size + 1];
         msg[msg_size] = '\0';
-        recv(Connections[index], msg, sizeof(msg), NULL);
+        recv(Connections[index], msg, msg_size, NULL);
         for (int i = 0; i < Counter; i++) {
             if (i == index) continue;
 
@@ -61,6 +62,8 @@ int main()
     int num_clients;
     SafeInputNumClients(num_clients, "Введите количество клиентов (>= 1): ");
 
+    Connections.resize(num_clients);
+
     // WSAStartup
     WSADATA wsaData;
     WORD DLLVersion = MAKEWORD(2, 1); // Запрашиваемая версия библиотеки WinSock
@@ -95,14 +98,20 @@ int main()
         }
         else
         {
-            cout << "Клиент подключён!" << endl;
-            string msg = "Здарова, перец";
-            int msg_size = sizeof(msg);
-            send(newConnection, (char*)&msg_size, sizeof(int), NULL);
-            send(newConnection, msg.c_str(), msg_size, NULL);
+            int clientNumber = i + 1; // Номер клиента
+            cout << "Юстас №" << clientNumber << " на связи!" << endl;
 
             Connections[i] = newConnection;
             ++Counter;
+
+            send(newConnection, (char*)&clientNumber, sizeof(int), NULL); // Отправляем номер клиенту
+
+            // Отправляем приветственное сообщение
+            string msg = "Алекс на связи. Здравствуйте, Юстас №" + to_string(clientNumber);
+            int msg_size = msg.size();
+            send(newConnection, (char*)&msg_size, sizeof(int), NULL);
+            send(newConnection, msg.c_str(), msg_size, NULL);
+
             CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ClientHandler, (LPVOID)(i), NULL, NULL);
         }
     }

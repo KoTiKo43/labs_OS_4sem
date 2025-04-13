@@ -6,7 +6,6 @@ using namespace std;
 SOCKET Connection;
 
 void ClientHandler() {
-    char msg[256];
     int msg_size;
     while(true) {
         recv(Connection, (char*)&msg_size, sizeof(int), NULL);
@@ -14,10 +13,11 @@ void ClientHandler() {
         msg[msg_size] = '\0';
         recv(Connection, msg, msg_size, NULL);
         cout << msg << endl;
+        delete[] msg;
     }
 }
 
-int main(int argc, char* argv[]) {
+int main() {
     // Установка кодировки вывода консоли
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
@@ -42,7 +42,11 @@ int main(int argc, char* argv[]) {
         cerr << "Ошибка, не удалось подключиться к серверу" << endl;
         return 1;
     }
-    cout << "Подключён!" << endl;
+    // Получение номера от сервера
+    int clientNumber;
+    recv(Connection, (char*)&clientNumber, sizeof(int), NULL);
+
+    cout << "Связь установлена. Ваш номер: " << clientNumber << endl;
 
     CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ClientHandler, NULL, NULL, NULL);
 
