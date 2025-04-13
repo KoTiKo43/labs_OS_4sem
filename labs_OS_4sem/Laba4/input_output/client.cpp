@@ -62,10 +62,15 @@ void SafeInput(int& value, const string& prompt) {
     cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 
+    int clientId;
+    if (argc > 1) {
+        clientId = stoi(argv[1]);
+        cout << "Клиент " << clientId << " запущен." << endl;
+    }
 
     const DWORD TIMEOUT = 30000; // 30 секунд таймаут
     cout << "Ожидание доступности сервера..." << endl;

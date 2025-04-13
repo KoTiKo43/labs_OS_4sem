@@ -85,15 +85,44 @@ void SafeInput(int &value, const string &prompt)
     cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
 }
 
+void LaunchClient(int clientId) {
+    STARTUPINFOA si = { sizeof(STARTUPINFOA) };
+    PROCESS_INFORMATION pi;
+    string cmd = "client.exe " + to_string(clientId); // Передаём ID клиента
+
+    if (!CreateProcessA(
+        NULL,                           
+        (LPSTR)cmd.c_str(),             
+        NULL,                           
+        NULL,                           
+        FALSE,                          
+        CREATE_NEW_CONSOLE,                              
+        NULL,                           
+        NULL,                           
+        &si,                            
+        &pi                             
+    )) {
+        cerr << "Ошибка запуска клиента: " << GetLastError() << endl;
+    } else {
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    }
+}
+
 int main()
 {
     // Установка кодировки вывода консоли
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 
+    
     // Считывание количества клиентов
     int num_clients;
     SafeInput(num_clients, "Введите количество клиентов (>= 2): ");
+
+    for (int i = 0; i < num_clients; ++i) {
+        LaunchClient(i + 1);
+    }
 
     // Создание именованных каналов
     HANDLE hInputPipe = CreateNamedPipeA(
@@ -192,7 +221,7 @@ int main()
     }
     CloseHandle(hInputPipe);
     
-    for (int i = 1; i < num_clients; i++)
+    for (int i = 0; i < num_clients; i++)
     {
         HANDLE hOutputPipe = CreateNamedPipeA(
             "\\\\.\\pipe\\MatrixOutput",
