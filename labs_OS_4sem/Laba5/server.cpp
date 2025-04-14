@@ -4,56 +4,82 @@
 #include <limits>
 #include <ios>
 #include <string>
+#include <map>
+#include <sstream>
 using namespace std;
 
 // Вектор сокетов
 vector<SOCKET> Connections;
-int Counter = 0;
 
-void ClientHandler(int index) {
-    int msg_size;
-    while (true) {
-        if (recv(Connections[index], (char*)&msg_size, sizeof(int), NULL) <= 0) {
-            cout << "Клиент № " << index + 1 << " отключился" << endl;
-            closesocket(Connections[index]);
-            break;
-        }
-        char* msg = new char[msg_size + 1];
-        msg[msg_size] = '\0';
-        recv(Connections[index], msg, msg_size, NULL);
-        for (int i = 0; i < Counter; i++) {
-            if (i == index) continue;
+// Создание семафора
+HANDLE hSemaphore;
 
-            send(Connections[i], (char*)&msg_size, sizeof(int), NULL);
-            send(Connections[i], msg, msg_size, NULL);
-        }
-        delete[] msg;
+char decodeMorse(const string &ch)
+{
+    static map<string, char> morseDecode = {
+        {".-", 'A'}, {"-...", 'B'}, {"-.-.", 'C'}, {"-..", 'D'}, {".", 'E'}, {"..-.", 'F'}, {"--.", 'G'}, {"....", 'H'}, {"..", 'I'}, {".---", 'J'}, {"-.-", 'K'}, {".-..", 'L'}, {"--", 'M'}, {"-.", 'N'}, {"---", 'O'}, {".--.", 'P'}, {"--.-", 'Q'}, {".-.", 'R'}, {"...", 'S'}, {"-", 'T'}, {"..-", 'U'}, {"...-", 'V'}, {".--", 'W'}, {"-..-", 'X'}, {"-.--", 'Y'}, {"--..", 'Z'}, {".----", '1'}, {"..---", '2'}, {"...--", '3'}, {"....-", '4'}, {".....", '5'}, {"-....", '6'}, {"--...", '7'}, {"---..", '8'}, {"----.", '9'}, {"-----", '0'}};
+    if (morseDecode.find(ch) != morseDecode.end())
+    {
+        return morseDecode[ch];
+    }
+    else
+    {
+        return '?';
     }
 }
 
-void SafeInputNumClients(int &value, const string &prompt)
+string decodeMorseMsg(const char *msg)
+{
+    stringstream ss(msg);
+    string ch;
+    string result = "";
+    while (ss >> ch)
+    {
+        if (ch == "/")
+        {
+            result += "";
+        }
+        else if (ch == "#")
+        {
+            result += " ";
+        }
+        else
+        {
+            result += decodeMorse(ch);
+        }
+    }
+    return result;
+}
+
+void ClientHandler(int index)
 {
     while (true)
     {
-        cout << prompt;
-        cin >> value;
+        // Ожидание семафора
+        WaitForSingleObject(hSemaphore, INFINITE);
 
-        if (cin.fail())
+        int msg_size;
+
+        if (recv(Connections[index], (char *)&msg_size, sizeof(int), NULL) <= 0)
         {
-            cin.clear();
-            cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
-            cerr << "Ошибка ввода! Введите число" << endl;
-            continue;
+            cout << "Клиент № " << index + 1 << " отключился" << endl;
+            closesocket(Connections[index]);
+            ReleaseSemaphore(hSemaphore, 1, NULL);
+            break;
         }
 
-        if (value < 1)
-        {
-            cerr << "Значение должно быть >= 1" << endl;
-            continue;
-        }
-        break;
+        char *msg = new char[msg_size + 1];
+        msg[msg_size] = '\0';
+        recv(Connections[index], msg, msg_size, NULL);
+
+        cout << "Шифровка от Юстаса №" << index + 1 << ": " << msg << endl;
+        cout << "Дешифровка: " << decodeMorseMsg(msg) << endl;
+
+        delete[] msg;
+
+        // Освобождение семафора
+        ReleaseSemaphore(hSemaphore, 1, NULL);
     }
-    cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
 }
 
 int main()
@@ -62,17 +88,11 @@ int main()
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 
-    // Количество клиентов
-    int num_clients;
-    SafeInputNumClients(num_clients, "Введите количество клиентов (>= 1): ");
-
-    Connections.resize(num_clients);
-
     // WSAStartup
     WSADATA wsaData;
-    WORD DLLVersion = MAKEWORD(2, 1); // Запрашиваемая версия библиотеки WinSock
+    WORD DLLVersion = MAKEWORD(2, 1);          // Запрашиваемая версия библиотеки WinSock
     if (WSAStartup(DLLVersion, &wsaData) != 0) // Загрузка библиотеки
-    { 
+    {
         cerr << "Ошибка WSAStartup" << endl;
         return 1;
     }
@@ -84,14 +104,14 @@ int main()
     addr.sin_family = AF_INET;                     // Семейство протоколов (константа AF_INET для интернет-протоколов)
 
     SOCKET sListen = socket(AF_INET, SOCK_STREAM, NULL); // Создание сокета для прослушивания
-    bind(sListen, (SOCKADDR *)&addr, sizeof(addr));   // Привязка адреса сокету
-    // Запуск прослушивания
-    listen(sListen,
-           SOMAXCONN // Максимально допустимое число запросов, допускающих обработки
-    );
+    bind(sListen, (SOCKADDR *)&addr, sizeof(addr));      // Привязка адреса сокету
+    listen(sListen, SOMAXCONN);                          // Запуск прослушивания
+
+    // Создание семафора при n = 2
+    hSemaphore = CreateSemaphore(NULL, 2, 2, NULL);
 
     SOCKET newConnection; // Сокет для удержания соединения с клиентом
-    for (int i = 0; i < num_clients; i++)
+    while (true)
     {
         newConnection = accept(sListen, (SOCKADDR *)&addr, &sizeofaddr);
 
@@ -102,24 +122,25 @@ int main()
         }
         else
         {
-            int clientNumber = i + 1; // Номер клиента
+            Connections.push_back(newConnection);
+            int clientNumber = Connections.size(); // Номер клиента
             cout << "Юстас №" << clientNumber << " на связи!" << endl;
 
-            Connections[i] = newConnection;
-            ++Counter;
+            // Отправляем номер клиенту
+            send(newConnection, (char *)&clientNumber, sizeof(int), NULL);
 
-            send(newConnection, (char*)&clientNumber, sizeof(int), NULL); // Отправляем номер клиенту
-
-            // Отправляем приветственное сообщение
-            string msg = "Алекс на связи. Здравствуйте, Юстас №" + to_string(clientNumber);
-            int msg_size = msg.size();
-            send(newConnection, (char*)&msg_size, sizeof(int), NULL);
-            send(newConnection, msg.c_str(), msg_size, NULL);
-
-            CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ClientHandler, (LPVOID)(i), NULL, NULL);
+            // Запускаем поток для обработки клиента
+            CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ClientHandler, (LPVOID)(Connections.size() - 1), NULL, NULL);
         }
     }
 
+    // Закрытие семафора
+    CloseHandle(hSemaphore);
+
+    for (SOCKET sock : Connections)
+        closesocket(sock);
+    closesocket(sListen);
+    WSACleanup();
     system("pause");
     return 0;
 }
