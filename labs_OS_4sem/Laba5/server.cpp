@@ -13,7 +13,11 @@ int Counter = 0;
 void ClientHandler(int index) {
     int msg_size;
     while (true) {
-        recv(Connections[index], (char*)&msg_size, sizeof(int), NULL);
+        if (recv(Connections[index], (char*)&msg_size, sizeof(int), NULL) <= 0) {
+            cout << "Клиент № " << index + 1 << " отключился" << endl;
+            closesocket(Connections[index]);
+            break;
+        }
         char* msg = new char[msg_size + 1];
         msg[msg_size] = '\0';
         recv(Connections[index], msg, msg_size, NULL);
