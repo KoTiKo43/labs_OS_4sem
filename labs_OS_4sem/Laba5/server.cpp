@@ -17,7 +17,16 @@ HANDLE hSemaphore;
 char decodeMorse(const string &ch)
 {
     static map<string, char> morseDecode = {
-        {".-", 'A'}, {"-...", 'B'}, {"-.-.", 'C'}, {"-..", 'D'}, {".", 'E'}, {"..-.", 'F'}, {"--.", 'G'}, {"....", 'H'}, {"..", 'I'}, {".---", 'J'}, {"-.-", 'K'}, {".-..", 'L'}, {"--", 'M'}, {"-.", 'N'}, {"---", 'O'}, {".--.", 'P'}, {"--.-", 'Q'}, {".-.", 'R'}, {"...", 'S'}, {"-", 'T'}, {"..-", 'U'}, {"...-", 'V'}, {".--", 'W'}, {"-..-", 'X'}, {"-.--", 'Y'}, {"--..", 'Z'}, {".----", '1'}, {"..---", '2'}, {"...--", '3'}, {"....-", '4'}, {".....", '5'}, {"-....", '6'}, {"--...", '7'}, {"---..", '8'}, {"----.", '9'}, {"-----", '0'}};
+        {".-", 'A'}, {"-...", 'B'}, {"-.-.", 'C'}, {"-..", 'D'}, {".", 'E'}, 
+        {"..-.", 'F'}, {"--.", 'G'}, {"....", 'H'}, {"..", 'I'}, {".---", 'J'}, 
+        {"-.-", 'K'}, {".-..", 'L'}, {"--", 'M'}, {"-.", 'N'}, {"---", 'O'}, 
+        {".--.", 'P'}, {"--.-", 'Q'}, {".-.", 'R'}, {"...", 'S'}, {"-", 'T'}, 
+        {"..-", 'U'}, {"...-", 'V'}, {".--", 'W'}, {"-..-", 'X'}, {"-.--", 'Y'}, 
+        {"--..", 'Z'}, {".----", '1'}, {"..---", '2'}, {"...--", '3'}, {"....-", '4'}, 
+        {".....", '5'}, {"-....", '6'}, {"--...", '7'}, {"---..", '8'}, {"----.", '9'}, 
+        {"-----", '0'}
+    };
+
     if (morseDecode.find(ch) != morseDecode.end())
     {
         return morseDecode[ch];
@@ -60,9 +69,10 @@ void ClientHandler(int index)
 
         int msg_size;
 
+        // Обработка отключения клиента
         if (recv(Connections[index], (char *)&msg_size, sizeof(int), NULL) <= 0)
         {
-            cout << "Клиент № " << index + 1 << " отключился" << endl;
+            cout << "Юстас №" << index + 1 << " прервал связь" << endl;
             closesocket(Connections[index]);
             ReleaseSemaphore(hSemaphore, 1, NULL);
             break;
@@ -71,6 +81,15 @@ void ClientHandler(int index)
         char *msg = new char[msg_size + 1];
         msg[msg_size] = '\0';
         recv(Connections[index], msg, msg_size, NULL);
+
+        if (string(msg) == "_END")
+        {
+            cout << "Юстас №" << index + 1 << " прервал связь" << endl;
+            closesocket(Connections[index]);
+            delete[] msg;
+            ReleaseSemaphore(hSemaphore, 1, NULL);
+            break;
+        }
 
         cout << "Шифровка от Юстаса №" << index + 1 << ": " << msg << endl;
         cout << "Дешифровка: " << decodeMorseMsg(msg) << endl;
@@ -108,9 +127,12 @@ int main()
     listen(sListen, SOMAXCONN);                          // Запуск прослушивания
 
     // Создание семафора при n = 2
-    hSemaphore = CreateSemaphore(NULL, 2, 2, NULL);
+    int n = 2;
+    hSemaphore = CreateSemaphore(NULL, n, n, NULL);
 
     SOCKET newConnection; // Сокет для удержания соединения с клиентом
+    cout << "Связь настроена. Ожидание подключений..." << endl;
+
     while (true)
     {
         newConnection = accept(sListen, (SOCKADDR *)&addr, &sizeofaddr);
@@ -138,7 +160,9 @@ int main()
     CloseHandle(hSemaphore);
 
     for (SOCKET sock : Connections)
+    {
         closesocket(sock);
+    }
     closesocket(sListen);
     WSACleanup();
     system("pause");

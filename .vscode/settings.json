@@ -8,6 +8,11 @@
         "istream": "cpp",
         "ios": "cpp",
         "ostream": "cpp",
-        "iosfwd": "cpp"
+        "iosfwd": "cpp",
+        "map": "cpp",
+        "xlocale": "cpp",
+        "sstream": "cpp",
+        "xtree": "cpp",
+        "xutility": "cpp"
     }
 }
