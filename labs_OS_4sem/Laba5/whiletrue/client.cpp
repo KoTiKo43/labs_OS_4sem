@@ -64,6 +64,7 @@ int main()
 
     Connection = socket(AF_INET, SOCK_STREAM, 0); // Сокет для соединения с сервером
     // Попытка соединения с сервером
+    cout << "Связь устанаваливается..." << endl;
     if (connect(Connection, (SOCKADDR *)&addr, sizeof(addr)) != 0)
     {
         cerr << "Ошибка, не удалось подключиться к серверу" << endl;

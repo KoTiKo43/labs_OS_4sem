@@ -13,6 +13,7 @@ vector<SOCKET> Connections;
 
 // Создание семафора
 HANDLE hSemaphore;
+HANDLE hSemaphoreConnect;
 
 char decodeMorse(const string &ch)
 {
@@ -96,9 +97,12 @@ void ClientHandler(int index)
 
         delete[] msg;
 
-        // Освобождение семафора
+        // Освобождение семафора обработки сообщений
         ReleaseSemaphore(hSemaphore, 1, NULL);
     }
+
+    // Освобождение семафора подключений
+    ReleaseSemaphore(hSemaphoreConnect, 1, NULL);
 }
 
 int main()
@@ -127,14 +131,18 @@ int main()
     listen(sListen, SOMAXCONN);                          // Запуск прослушивания
 
     // Создание семафора при n = 2
-    int n = 2;
+    const int n = 2;
     hSemaphore = CreateSemaphore(NULL, n, n, NULL);
+    const int maxConnections = 2;
+    hSemaphoreConnect = CreateSemaphore(NULL, maxConnections, maxConnections, NULL);
 
     SOCKET newConnection; // Сокет для удержания соединения с клиентом
     cout << "Связь настроена. Ожидание подключений..." << endl;
 
     while (true)
     {
+        WaitForSingleObject(hSemaphoreConnect, INFINITE);
+
         newConnection = accept(sListen, (SOCKADDR *)&addr, &sizeofaddr);
 
         // Проверка подключения клиента к серверу
@@ -150,6 +158,7 @@ int main()
 
             // Отправляем номер клиенту
             send(newConnection, (char *)&clientNumber, sizeof(int), NULL);
+            cout << "Отправку Юстасу его номера " << clientNumber << endl;
 
             // Запускаем поток для обработки клиента
             CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ClientHandler, (LPVOID)(Connections.size() - 1), NULL, NULL);
@@ -158,6 +167,7 @@ int main()
 
     // Закрытие семафора
     CloseHandle(hSemaphore);
+    CloseHandle(hSemaphoreConnect);
 
     for (SOCKET sock : Connections)
     {

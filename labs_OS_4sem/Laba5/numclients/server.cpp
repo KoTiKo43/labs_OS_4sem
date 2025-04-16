@@ -13,6 +13,7 @@ vector<SOCKET> Connections;
 
 // Создание семафора
 HANDLE hSemaphore;
+HANDLE hSemaphoreConnect;
 
 char decodeMorse(const string &ch)
 {
@@ -99,6 +100,8 @@ void ClientHandler(int index)
         // Освобождение семафора
         ReleaseSemaphore(hSemaphore, 1, NULL);
     }
+
+    ReleaseSemaphore(hSemaphoreConnect, 1, NULL);
 }
 
 void SafeInputNumClients(int &value, const string &prompt)
@@ -158,11 +161,13 @@ int main()
     // Создание семафора при n = 2
     int n = 2;
     hSemaphore = CreateSemaphore(NULL, n, n, NULL);
+    const int maxConnections = numClients;
+    hSemaphoreConnect = CreateSemaphore(NULL, maxConnections, maxConnections, NULL);
 
     SOCKET newConnection; // Сокет для удержания соединения с клиентом
     cout << "Связь настроена. Ожидание подключений..." << endl;
 
-    for (int i = 0; i < numClients; i++)
+    while(true)
     {
         newConnection = accept(sListen, (SOCKADDR *)&addr, &sizeofaddr);
 
@@ -187,6 +192,7 @@ int main()
 
     // Закрытие семафора
     CloseHandle(hSemaphore);
+    CloseHandle(hSemaphoreConnect);
 
     for (SOCKET sock : Connections)
     {
